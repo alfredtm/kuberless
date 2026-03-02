@@ -1,0 +1,5 @@
+# ko build configuration
+# See: https://ko.build/configuration/
+
+# Default base image (distroless, minimal, secure)
+defaultBaseImage: cgr.dev/chainguard/static:latest

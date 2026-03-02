@@ -1,0 +1,25 @@
+{{- if .Values.knativeServing.enabled }}
+apiVersion: operator.knative.dev/v1beta1
+kind: KnativeServing
+metadata:
+  name: knative-serving
+  namespace: knative-serving
+  labels:
+    {{- include "kuberless.labels" . | nindent 4 }}
+spec:
+  {{- with .Values.knativeServing.version }}
+  version: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.knativeServing.ingress }}
+  ingress:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.knativeServing.config }}
+  config:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- with .Values.knativeServing.workloads }}
+  workloads:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}

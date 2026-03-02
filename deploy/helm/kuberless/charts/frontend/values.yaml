@@ -1,0 +1,14 @@
+image:
+  repository: ghcr.io/kuberless/frontend
+  tag: latest
+  pullPolicy: IfNotPresent
+replicas: 2
+port: 3000
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 128Mi
+apiUrl: ""

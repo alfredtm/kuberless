@@ -1,0 +1,160 @@
+global:
+  serviceAccountName: kuberless
+  openshift:
+    enabled: false  # set true on OpenShift to create SCC bindings for Knative/Kourier
+  auth:
+    keycloak:
+      enabled: false
+      issuerUrl: ""
+      clientId: "kuberless"
+      clientSecret: ""
+      existingSecret: ""  # if set, reads clientSecret from this secret
+    adminLogin:
+      enabled: true
+      username: "admin"
+      password: ""        # required if existingSecret not set
+      existingSecret: ""  # if set, reads username+password from this secret
+      secretName: "kuberless-admin"
+
+# --- Platform components ---
+
+operator:
+  image:
+    repository: ghcr.io/alfredtm/kuberless/operator
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+apiserver:
+  image:
+    repository: ghcr.io/alfredtm/kuberless/apiserver
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 8080
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  postgresql:
+    # Set this to the secret containing DATABASE_URL (created by `just deploy-postgresql`).
+    existingSecret: kuberless-db
+    secretKey: database-url
+
+frontend:
+  image:
+    repository: ghcr.io/alfredtm/kuberless/frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 3000
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  apiUrl: "http://kuberless-apiserver:8080"
+
+# --- Knative Serving configuration ---
+# Prerequisites (cert-manager, knative-operator) must be installed separately
+# via `make deploy-prereqs` before installing this chart.
+
+knativeServing:
+  # Create a KnativeServing CR. Requires the Knative operator CRD to exist.
+  enabled: true
+  # version: "" # omit to use the operator's bundled version
+  ingress:
+    kourier:
+      enabled: true
+      service-type: ClusterIP
+  config:
+    network:
+      ingress-class: kourier.ingress.networking.knative.dev
+      domain-template: "{{.Name}}-{{.Namespace}}.{{.Domain}}"
+    domain:
+      sslip.io: ""
+    features:
+      queueproxy.resource-defaults: "Enabled"
+    deployment:
+      queue-sidecar-cpu-request: "25m"
+      queue-sidecar-cpu-limit: "100m"
+      queue-sidecar-memory-request: "50Mi"
+      queue-sidecar-memory-limit: "200Mi"
+  # Set KUBERNETES_MIN_VERSION=0.0.0 to disable the bundled Serving images'
+  # minimum-version check. Required when the cluster version string doesn't
+  # match the semver format the check expects (e.g. OpenShift, kind).
+  workloads:
+    - name: activator
+      env:
+        - container: activator
+          envVars:
+            - name: KUBERNETES_MIN_VERSION
+              value: "0.0.0"
+    - name: autoscaler
+      env:
+        - container: autoscaler
+          envVars:
+            - name: KUBERNETES_MIN_VERSION
+              value: "0.0.0"
+    - name: autoscaler-hpa
+      env:
+        - container: autoscaler-hpa
+          envVars:
+            - name: KUBERNETES_MIN_VERSION
+              value: "0.0.0"
+    - name: controller
+      env:
+        - container: controller
+          envVars:
+            - name: KUBERNETES_MIN_VERSION
+              value: "0.0.0"
+    - name: webhook
+      env:
+        - container: webhook
+          envVars:
+            - name: KUBERNETES_MIN_VERSION
+              value: "0.0.0"
+    - name: net-kourier-controller
+      env:
+        - container: controller
+          envVars:
+            - name: KUBERNETES_MIN_VERSION
+              value: "0.0.0"
+
+# --- Cross-cutting resources ---
+
+serviceAccount:
+  create: true
+  name: kuberless
+
+ingress:
+  enabled: true
+  className: ""
+  annotations: {}
+  hosts:
+    - host: kuberless.example.com
+      paths:
+        - path: /api
+          service: apiserver
+        - path: /
+          service: frontend
+  tls: []
+
+gateway:
+  enabled: false
+  gatewayName: ""
+  gatewayNamespace: envoy-gateway-system
+  hostname: ""
+  appsDomain: ""

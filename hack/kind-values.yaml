@@ -1,0 +1,67 @@
+global:
+  serviceAccountName: kuberless
+
+operator:
+  image:
+    repository: ko.local/operator
+    tag: latest
+    pullPolicy: Never
+  replicas: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+apiserver:
+  image:
+    repository: ko.local/apiserver
+    tag: latest
+    pullPolicy: Never
+  replicas: 1
+  port: 8080
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  postgresql:
+    existingSecret: kuberless-db
+    secretKey: database-url
+
+frontend:
+  image:
+    repository: kuberless-frontend
+    tag: latest
+    pullPolicy: Never
+  replicas: 1
+  port: 3000
+  apiUrl: "http://kuberless-apiserver:8080"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+knativeServing:
+  enabled: true
+  ingress:
+    kourier:
+      enabled: true
+      service-type: NodePort
+  config:
+    domain:
+      "127.0.0.1.sslip.io": ""
+
+ingress:
+  enabled: false
+
+serviceAccount:
+  create: true
+  name: kuberless

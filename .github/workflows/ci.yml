@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  e2e:
+    name: End-to-end (kind)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: ko-build/setup-ko@d006021bd0c28d1ce33a07e7943d48b079944c8d # v0.9.0
+
+      - name: Install just
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/local/bin
+
+      - name: Create kind cluster
+        run: hack/kind-setup.sh
+
+      - name: Build Go images
+        run: |
+          KO_DOCKER_REPO=ko.local/operator  ko build ./operator  --bare --platform=linux/amd64 --tags=latest
+          KO_DOCKER_REPO=ko.local/apiserver ko build ./apiserver --bare --platform=linux/amd64 --tags=latest
+          KO_DOCKER_REPO=ko.local/cli       ko build ./cli       --bare --platform=linux/amd64 --tags=latest
+
+      - name: Build frontend image
+        run: docker build -f frontend/Dockerfile -t kuberless-frontend:latest frontend
+
+      - name: Load images into kind
+        run: |
+          kind load docker-image ko.local/operator:latest   --name kuberless-dev
+          kind load docker-image ko.local/apiserver:latest  --name kuberless-dev
+          kind load docker-image ko.local/cli:latest        --name kuberless-dev
+          kind load docker-image kuberless-frontend:latest  --name kuberless-dev
+
+      - name: Install prerequisites
+        run: just deploy-prereqs
+        timeout-minutes: 10
+
+      - name: Install kuberless
+        run: |
+          just _deploy-kuberless-kind || {
+            echo "==> helm install failed, pod status:"
+            kubectl get pods -n kuberless-system -o wide || true
+            kubectl describe pods -n kuberless-system || true
+            kubectl get events -n kuberless-system --sort-by='.lastTimestamp' | tail -30 || true
+            exit 1
+          }
+        timeout-minutes: 12
+
+      - name: Patch Kourier NodePort
+        run: just _patch-kourier-nodeport
+
+      - name: Smoke test
+        run: |
+          echo "==> Waiting for pods in kuberless-system..."
+          kubectl wait --for=condition=Ready pod --all -n kuberless-system --timeout=120s
+
+          echo "==> Applying sample tenant..."
+          kubectl apply -f deploy/samples/tenant.yaml
+
+          echo "==> Verifying kuberless tenant was reconciled..."
+          for i in $(seq 1 30); do
+            PHASE=$(kubectl get tenants.kuberless.io acme-corp -o jsonpath='{.status.phase}' 2>/dev/null)
+            echo "  phase: ${PHASE}"
+            if [ "$PHASE" = "Active" ]; then echo "Tenant is Active"; break; fi
+            if [ $i -eq 30 ]; then
+              kubectl get tenants.kuberless.io acme-corp -o yaml
+              exit 1
+            fi
+            sleep 2
+          done
+
+          echo "==> Pods status..."
+          kubectl get pods -A

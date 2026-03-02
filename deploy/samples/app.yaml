@@ -1,0 +1,21 @@
+apiVersion: kuberless.io/v1alpha1
+kind: App
+metadata:
+  name: myapi
+  namespace: tenant-acme-corp
+spec:
+  tenantRef: acme-corp
+  image: ghcr.io/acme/myapi:v1.2.0
+  port: 8080
+  env:
+    - name: LOG_LEVEL
+      value: "info"
+  scaling:
+    minInstances: 0
+    maxInstances: 10
+    targetConcurrency: 100
+  resources:
+    cpuRequest: "100m"
+    memoryLimit: "512Mi"
+  customDomains:
+    - hostname: api.acme.com

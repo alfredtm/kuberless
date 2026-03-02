@@ -1,0 +1,22 @@
+apiVersion: v2
+name: kuberless
+description: Multi-tenant serverless platform on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - serverless
+  - multi-tenant
+  - knative
+  - kubernetes
+
+dependencies:
+  - name: operator
+    version: 0.1.0
+    repository: "file://charts/operator"
+  - name: apiserver
+    version: 0.1.0
+    repository: "file://charts/apiserver"
+  - name: frontend
+    version: 0.1.0
+    repository: "file://charts/frontend"

@@ -1,0 +1,67 @@
+# OpenShift Security Context Constraints for Kourier (Knative ingress gateway).
+# Kourier runs as UID 65534 (nobody) with seccompProfile: RuntimeDefault,
+# which OpenShift's built-in SCCs reject.
+#
+# Apply before installing the knative-operator:
+#   kubectl apply -f deploy/openshift/kourier-scc.yaml
+#
+# Or use `make deploy-knative OPENSHIFT=true` which applies this automatically.
+---
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: kuberless-kourier
+allowPrivilegedContainer: false
+allowPrivilegeEscalation: false
+allowedCapabilities: []
+defaultAddCapabilities: []
+requiredDropCapabilities:
+  - ALL
+readOnlyRootFilesystem: false
+runAsUser:
+  type: RunAsAny
+fsGroup:
+  type: RunAsAny
+supplementalGroups:
+  type: RunAsAny
+seLinuxContext:
+  type: MustRunAs
+seccompProfiles:
+  - '*'
+volumes:
+  - configMap
+  - projected
+  - secret
+  - emptyDir
+groups: []
+users: []
+---
+# OpenShift does NOT auto-create the system:openshift:scc:<name> ClusterRole
+# when an SCC is created via YAML — only via `oc adm policy`. Create it explicitly.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:openshift:scc:kuberless-kourier
+rules:
+  - apiGroups:
+      - security.openshift.io
+    resources:
+      - securitycontextconstraints
+    resourceNames:
+      - kuberless-kourier
+    verbs:
+      - use
+---
+# Bind the SCC to the default SA in knative-serving.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kuberless-kourier-scc
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:openshift:scc:kuberless-kourier
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: knative-serving

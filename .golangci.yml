@@ -1,0 +1,44 @@
+version: "2"
+
+run:
+  timeout: 5m
+  allow-parallel-runners: true
+
+linters:
+  default: none
+  enable:
+    - dupl
+    - errcheck
+    - copyloopvar
+    - ginkgolinter
+    - goconst
+    - gocyclo
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - prealloc
+    - revive
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+  exclusions:
+    rules:
+      - path: "api/*"
+        linters:
+          - lll
+      - path: "(operator|apiserver|cli)/*"
+        linters:
+          - dupl
+          - lll
+  settings:
+    revive:
+      rules:
+        - name: comment-spacings
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

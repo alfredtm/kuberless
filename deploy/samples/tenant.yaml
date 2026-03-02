@@ -1,0 +1,10 @@
+apiVersion: kuberless.io/v1alpha1
+kind: Tenant
+metadata:
+  name: acme-corp
+spec:
+  displayName: "Acme Corp"
+  ownerEmail: "alice@acme.com"
+  plan: starter
+  maxApps: 10
+  networkIsolation: true
