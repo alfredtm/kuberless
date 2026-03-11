@@ -60,9 +60,11 @@ ingress:
 
 # Gateway API is used on OpenShift instead of standard Ingress.
 # Set gatewayName and gatewayNamespace to match your Envoy Gateway install.
+# gatewayName is required -- leaving it empty will cause HTTPRoute validation to fail.
+# Example: --set gateway.gatewayName=public --set gateway.hostname=kuberless.apps.<cluster>.example.com
 gateway:
   enabled: true
-  gatewayName: ""
+  gatewayName: "public"
   gatewayNamespace: envoy-gateway-system
   hostname: kuberless.example.com
   appsDomain: example.com
