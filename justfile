@@ -181,7 +181,7 @@ deploy-knative:
       --repo https://knative.github.io/operator knative-operator \
       --version {{knative_op_ver}} \
       --namespace knative-operator --create-namespace \
-      --wait --timeout 5m
+      --wait --timeout 10m
     # Create namespace ahead of time so we can apply OpenShift SCC before Knative pods start
     kubectl create namespace knative-serving --dry-run=client -o yaml | kubectl apply -f -
     if [[ "{{openshift}}" == "true" ]]; then
