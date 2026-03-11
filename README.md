@@ -15,13 +15,13 @@ Built as a learning project — no backup strategy, no monitoring, error handlin
 
 - Kubernetes cluster with [Cilium](https://docs.cilium.io/en/stable/gettingstarted/) >= 1.15 as CNI
 - [`just`](https://just.systems) task runner
-- cert-manager, Knative Serving, Capsule, and PostgreSQL — installed separately via `just deploy-prereqs`
+- cert-manager, Knative Serving, Capsule, and PostgreSQL — installed via `just deploy-prereqs`
 
 ## Install
 
 ```bash
 just deploy-prereqs
-just deploy-kuberless HOST=kuberless.example.com ADMIN_PASSWORD=yourpassword
+HOST=kuberless.example.com ADMIN_PASSWORD=yourpassword just deploy-kuberless
 ```
 
 Or with helm directly:
@@ -38,8 +38,6 @@ Minimal `my-values.yaml`:
 global:
   auth:
     adminLogin:
-      enabled: true
-      username: "admin"
       password: "yourpassword"
 
 ingress:
@@ -64,18 +62,34 @@ just deploy-teardown-all    # removes everything
 
 ### OpenShift
 
+Requires [Envoy Gateway](https://gateway.envoyproxy.io/) installed on the cluster. Set `HOST` to your apps domain and `gateway.gatewayName` to match your Gateway resource.
+
 ```bash
-just openshift-deploy
+HOST=kuberless.apps.mycluster.example.com \
+  just openshift-deploy \
+  -- --set gateway.gatewayName=public --set gateway.appsDomain=apps.mycluster.example.com
+
 just openshift-teardown
 ```
 
+Or pass overrides via `hack/openshift-values.yaml` before running `just openshift-deploy`.
+
 ## Local development (kind)
 
+Requires [`ko`](https://ko.build) in addition to `just` and Docker.
+
+On macOS with Docker Desktop, set `DOCKER_HOST` so `ko` can reach the daemon:
+
 ```bash
+export DOCKER_HOST=unix://$HOME/.docker/run/docker.sock
 just kind-dev       # one-shot: cluster + prereqs + images + deploy
 just kind-redeploy  # rebuild and restart after code changes
 just kind-teardown
+```
 
+Apps are reachable at `http://<app>-tenant-<tenant>.127.0.0.1.sslip.io` once deployed. Port-forward to use the API and frontend locally:
+
+```bash
 kubectl port-forward -n kuberless-system svc/kuberless-apiserver 8080:8080
 kubectl port-forward -n kuberless-system svc/kuberless-frontend  3000:3000
 ```
@@ -89,7 +103,7 @@ just lint
 ## CLI
 
 ```bash
-kuberless login
+kuberless login --server http://localhost:8080
 kuberless tenant create my-org --plan starter
 kuberless deploy ghcr.io/myorg/myapp:latest --name myapp --port 8080
 kuberless apps list
@@ -99,11 +113,6 @@ kuberless domains add myapp api.example.com
 kuberless apps pause myapp
 ```
 
-## Tenant isolation
-
-Each tenant gets a namespace (`tenant-{name}`) with a Capsule Tenant, CiliumNetworkPolicy (cross-tenant traffic denied), and ResourceQuota:
-
-Plans: Free / Starter / Pro / Enterprise (see `api/v1alpha1/`).
 
 ## License
 
