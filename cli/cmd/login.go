@@ -17,21 +17,26 @@ var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate with the kuberless platform",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		reader := bufio.NewReader(os.Stdin)
-
 		serverURL, _ := cmd.Flags().GetString("server")
+		username, _ := cmd.Flags().GetString("username")
+		password, _ := cmd.Flags().GetString("password")
 
-		fmt.Print("Username: ")
-		username, _ := reader.ReadString('\n')
-		username = strings.TrimSpace(username)
-
-		fmt.Print("Password: ")
-		passwordBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
-		if err != nil {
-			return fmt.Errorf("reading password: %w", err)
+		if username == "" {
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("Username: ")
+			u, _ := reader.ReadString('\n')
+			username = strings.TrimSpace(u)
 		}
-		fmt.Println()
-		password := string(passwordBytes)
+
+		if password == "" {
+			fmt.Print("Password: ")
+			passwordBytes, err := term.ReadPassword(int(os.Stdin.Fd()))
+			if err != nil {
+				return fmt.Errorf("reading password: %w", err)
+			}
+			fmt.Println()
+			password = string(passwordBytes)
+		}
 
 		cfg := &client.Config{
 			APIBaseURL: serverURL,
@@ -69,4 +74,6 @@ var loginCmd = &cobra.Command{
 
 func init() {
 	loginCmd.Flags().String("server", "http://localhost:8080", "API server URL")
+	loginCmd.Flags().String("username", "", "Username (skips interactive prompt)")
+	loginCmd.Flags().String("password", "", "Password (skips interactive prompt)")
 }
