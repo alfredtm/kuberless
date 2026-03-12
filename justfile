@@ -101,9 +101,9 @@ run-frontend:
 
 # Build all Go images locally with ko (tagged :latest)
 ko-build-local:
-    KO_DOCKER_REPO=ko.local ko build ./operator --bare --platform={{platforms}} --tags=latest
-    KO_DOCKER_REPO=ko.local ko build ./apiserver --bare --platform={{platforms}} --tags=latest
-    KO_DOCKER_REPO=ko.local ko build ./cli --bare --platform={{platforms}} --tags=latest
+    KO_DOCKER_REPO=ko.local/operator ko build ./operator --bare --platform={{platforms}} --tags=latest
+    KO_DOCKER_REPO=ko.local/apiserver ko build ./apiserver --bare --platform={{platforms}} --tags=latest
+    KO_DOCKER_REPO=ko.local/cli ko build ./cli --bare --platform={{platforms}} --tags=latest
 
 # Build and push all Go images with ko (git SHA + latest tags)
 ko-build:
@@ -336,9 +336,9 @@ _patch-kourier-nodeport:
     set -euo pipefail
     echo "Waiting for Kourier service..."
     for i in $(seq 1 30); do
-      if kubectl get svc kourier -n kourier-system &>/dev/null; then
+      if kubectl get svc kourier -n knative-serving &>/dev/null; then
         echo "Patching Kourier service with kind NodePort values..."
-        kubectl patch service kourier -n kourier-system \
+        kubectl patch service kourier -n knative-serving \
           --type merge \
           --patch '{
             "spec": {
