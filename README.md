@@ -32,28 +32,6 @@ helm install kuberless deploy/helm/kuberless \
   -f my-values.yaml
 ```
 
-Minimal `my-values.yaml`:
-
-```yaml
-global:
-  auth:
-    adminLogin:
-      enabled: true
-      username: "admin"
-      password: "yourpassword"
-
-ingress:
-  enabled: true
-  className: nginx
-  hosts:
-    - host: kuberless.example.com
-      paths:
-        - path: /api
-          service: apiserver
-        - path: /
-          service: frontend
-```
-
 The JWT signing secret is auto-generated on first install and preserved across upgrades.
 
 ```bash
@@ -98,12 +76,6 @@ kuberless env set myapp KEY=value
 kuberless domains add myapp api.example.com
 kuberless apps pause myapp
 ```
-
-## Tenant isolation
-
-Each tenant gets a namespace (`tenant-{name}`) with a Capsule Tenant, CiliumNetworkPolicy (cross-tenant traffic denied), and ResourceQuota:
-
-Plans: Free / Starter / Pro / Enterprise (see `api/v1alpha1/`).
 
 ## License
 
